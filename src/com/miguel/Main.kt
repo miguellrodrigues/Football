@@ -16,15 +16,10 @@ object Main {
     private const val robot = "lumibot"
 
     enum class State {
-        MAZE, RESCUE
+        POSITION, KICK, WAIT
     }
 
-    enum class Action {
-        CATCH, CARRY
-    }
-
-    private var state = State.MAZE
-    private var action = Action.CATCH
+    private var state = State.POSITION
 
     private val sim = remoteApi()
 
@@ -80,11 +75,6 @@ object Main {
         return out.array.toTypedArray()
     }
 
-    data class Victim(
-            val position: Vector,
-            val handle: Int
-    )
-
     @JvmStatic
     fun main(args: Array<String>) {
 
@@ -135,11 +125,9 @@ object Main {
 
             sim.simxStartSimulation(clientId, remoteApi.simx_opmode_oneshot)
 
-            val radius = 1.0
+            val radius = .7
 
-            var state = "position"
-
-            val anglePID = Pid(5.0, 0.0, 0.0, 4.0, 0.0)
+            val anglePID = Pid(7.5, 0.0, 0.1, 4.0, Math.toRadians(5.0))
             val distancePID = Pid(5.0, 1.0, 0.0, 4.0, 2.0)
 
             loop@ while (running) {
@@ -158,7 +146,7 @@ object Main {
                 val goalPosition = Vector(goalPos.array[0].toDouble(), goalPos.array[1].toDouble(), 0.05)
 
                 when (state) {
-                    "position" -> {
+                    State.POSITION -> {
                         val theta = Angle.normalizeRadian(ballVector.differenceAngle(goalPosition))
 
                         val opposite = theta - Math.PI
@@ -179,27 +167,27 @@ object Main {
                         leftVelocity = angleOUT + distanceOUT
 
                         if (distance <= 0.03) {
-                            state = "kick"
+                            state = State.KICK
                         }
                     }
 
-                    "kick" -> {
-                        val theta = Angle.normalizeRadian(ballVector.differenceAngle(goalPosition))
+                    State.KICK -> {
+                        val theta = Angle.normalizeRadian(robotVector.differenceAngle(goalPosition))
 
                         val error = robotVector.distance(ballVector)
 
-                        if (error <= 0.11) {
-                            state = "wait"
+                        if (error <= 0.108) {
+                            state = State.WAIT
                         }
 
                         val angleOUT = anglePID.update(robotOrientation.array[2] - theta, 0.05)
-                        val distanceOUT = distancePID.update(error, 0.05)
+                        val distanceOUT = distancePID.update(error, 0.5)
 
                         rightVelocity = -angleOUT + distanceOUT
                         leftVelocity = angleOUT + distanceOUT
                     }
 
-                    "wait" -> {
+                    State.WAIT -> {
                         rightVelocity = 0.0
                         leftVelocity = 0.0
 
@@ -212,7 +200,7 @@ object Main {
 
                             sim.simxSetObjectPosition(clientId, ballHandle.value, -1, teleport, remoteApi.simx_opmode_oneshot)
 
-                            state = "position"
+                            state = State.POSITION
                         }
                     }
                 }
