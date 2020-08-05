@@ -50,11 +50,7 @@ object Main {
         val options = StringWA(1)
         options.array[0] = parameter
 
-        val out: FloatWA = if (parameter == "time") {
-            FloatWA(1)
-        } else {
-            FloatWA(3)
-        }
+        val out = FloatWA(1)
 
         sim.simxCallScriptFunction(
                 clientId,
@@ -96,7 +92,7 @@ object Main {
             sim.simxGetObjectHandle(clientId, "ball", ballHandle, remoteApi.simx_opmode_blocking)
 
             val goalHandle = IntW(1)
-            sim.simxGetObjectHandle(clientId, "Disc", goalHandle, remoteApi.simx_opmode_blocking)
+            sim.simxGetObjectHandle(clientId, "goal", goalHandle, remoteApi.simx_opmode_blocking)
 
             val rightMotorHandle = IntW(1)
             sim.simxGetObjectHandle(clientId, "${robot}_rightMotor", rightMotorHandle, remoteApi.simx_opmode_blocking)
@@ -125,10 +121,12 @@ object Main {
 
             sim.simxStartSimulation(clientId, remoteApi.simx_opmode_oneshot)
 
-            val radius = .7
+            val radius = .67
 
-            val anglePID = Pid(7.5, 0.0, 0.1, 4.0, Math.toRadians(5.0))
-            val distancePID = Pid(5.0, 1.0, 0.0, 4.0, 2.0)
+            val anglePID = Pid(9.0, 0.0, 0.5, 4.0, Math.toRadians(5.0))
+            val distancePID = Pid(8.0, 1.0, 0.0, 4.0, 5.0)
+
+            var counter = getSimulationData("counter")[0].toInt()
 
             loop@ while (running) {
                 sim.simxGetObjectPosition(clientId, robotHandle.value, -1, robotPos, remoteApi.simx_opmode_buffer)
@@ -166,32 +164,34 @@ object Main {
                         rightVelocity = -angleOUT + distanceOUT
                         leftVelocity = angleOUT + distanceOUT
 
-                        if (distance <= 0.03) {
+                        if (distance <= 0.01) {
                             state = State.KICK
                         }
                     }
 
                     State.KICK -> {
-                        val theta = Angle.normalizeRadian(robotVector.differenceAngle(goalPosition))
+                        val theta = Angle.normalizeRadian(ballVector.differenceAngle(goalPosition))
 
                         val error = robotVector.distance(ballVector)
 
-                        if (error <= 0.108) {
+                        if (error < 0.108) {
                             state = State.WAIT
                         }
 
-                        val angleOUT = anglePID.update(robotOrientation.array[2] - theta, 0.05)
-                        val distanceOUT = distancePID.update(error, 0.5)
+                        val angleOUT = anglePID.update(robotOrientation.array[2] - theta, 1.0)
+                        val distanceOUT = distancePID.update(error,0.7)
 
                         rightVelocity = -angleOUT + distanceOUT
                         leftVelocity = angleOUT + distanceOUT
                     }
 
                     State.WAIT -> {
+                        val score = getSimulationData("counter")[0].toInt()
+
                         rightVelocity = 0.0
                         leftVelocity = 0.0
 
-                        if (ballVector.distance(goalPosition) <= 0.1) {
+                        if (score > counter) {
                             val teleport = FloatWA(3)
 
                             teleport.array[0] = Random.nextDouble(-1.8, 0.8).toFloat()
@@ -201,6 +201,8 @@ object Main {
                             sim.simxSetObjectPosition(clientId, ballHandle.value, -1, teleport, remoteApi.simx_opmode_oneshot)
 
                             state = State.POSITION
+
+                            counter = score
                         }
                     }
                 }
