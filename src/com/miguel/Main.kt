@@ -123,7 +123,7 @@ object Main {
 
             val radius = .67
 
-            val anglePID = Pid(9.0, 0.0, 0.5, 4.0, Math.toRadians(5.0))
+            val anglePID = Pid(10.0, 0.0, 0.5, 4.0, Math.toRadians(1.0))
             val distancePID = Pid(8.0, 1.0, 0.0, 4.0, 5.0)
 
             var counter = getSimulationData("counter")[0].toInt()
@@ -179,7 +179,7 @@ object Main {
                         }
 
                         val angleOUT = anglePID.update(robotOrientation.array[2] - theta, 1.0)
-                        val distanceOUT = distancePID.update(error,0.7)
+                        val distanceOUT = distancePID.update(error,0.4)
 
                         rightVelocity = -angleOUT + distanceOUT
                         leftVelocity = angleOUT + distanceOUT
