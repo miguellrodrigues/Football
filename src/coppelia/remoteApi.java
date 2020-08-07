@@ -701,7 +701,7 @@ public class remoteApi {
     public static final int simx_opmode_remove = 458752;        /* doesn't send anything and doesn't return any specific value. It just erases a similar command reply in the inbox (to free some memory) */
 
     static {
-        System.load("/Users/miguel/IdeaProjects/Seminarioo/src/libremoteApiJava.dylib");
+        System.load("C:\\Users\\Storm\\IdeaProjects\\Football\\src\\remoteApiJava.dll");
     }
 
     public native int simxStart(final String connectionAddress, int connectionPort, boolean waitUntilConnected, boolean doNotReconnectOnceDisconnected, int timeOutInMs, int commThreadCycleInMs);
