@@ -32,4 +32,8 @@ class Pid(private val kp: Double, private val ki: Double, private val kd: Double
 
         return out
     }
+
+    fun zero() {
+        accumulator = 0.0
+    }
 }

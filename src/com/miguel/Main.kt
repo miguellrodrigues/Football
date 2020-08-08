@@ -120,14 +120,14 @@ object Main {
 
             val radius = .75
 
-            val anglePID = Pid(8.0, .0,.3, 6.0, .0)
-            val distancePID = Pid(5.0, .5, .0, 8.0, 1.0)
+            val anglePID = Pid(5.0, .0,0.75, 8.0, .0)
+            val distancePID = Pid(3.0, .3, .0, 8.0, 1.0)
 
-            var distance = 0.0
-            var theta = 0.0
+            var distance = .0
+            var theta = .0
 
-            var counter = 0.0
-            var error = 0.0
+            var counter = .0
+            var error = .0
 
             var lastBallPosition = Vector(.0, .0, .0)
 
@@ -169,19 +169,21 @@ object Main {
                             state = State.KICK
 
                             lastBallPosition = ballVector
+
+                            distancePID.zero()
                         }
                     }
 
                     State.KICK -> {
-                        theta = ballVector.differenceAngle(goalPosition)
-
                         distance = robotVector.distance(ballVector)
+
+                        theta = ballVector.differenceAngle(goalPosition)
 
                         if (ballVector.distance(lastBallPosition) >= .1) {
                             state = State.POSITION
                         }
 
-                        if (distance < .108) {
+                        if (distance <= .108) {
                             state = State.WAIT
                         }
                     }
@@ -192,9 +194,15 @@ object Main {
                         if (score > counter || ballVector.z < 0) {
                             val teleport = FloatWA(3)
 
-                            teleport.array[0] = Random.nextDouble(-1.45, 1.45).toFloat()
-                            teleport.array[1] = Random.nextDouble(-.7250, .5250).toFloat()
-                            teleport.array[2] = 0.05.toFloat()
+                            var teleportVector = Vector(Random.nextDouble(-1.45, 1.45), Random.nextDouble(-.7250, .5250), 0.05)
+
+                            while (teleportVector.distance(robotVector) <= radius) {
+                                teleportVector = Vector(Random.nextDouble(-1.45, 1.45), Random.nextDouble(-.7250, .5250), 0.05)
+                            }
+
+                            teleport.array[0] = teleportVector.x.toFloat()
+                            teleport.array[1] = teleportVector.y.toFloat()
+                            teleport.array[2] = teleportVector.z.toFloat()
 
                             sim.simxSetObjectPosition(clientId, ballHandle.value, -1, teleport, remoteApi.simx_opmode_oneshot)
 
@@ -217,8 +225,8 @@ object Main {
                     rightVelocity = .0
                     leftVelocity = .0
                 } else {
-                    val angleOUT = anglePID.update(Angle.normalizeRadian(robotOrientation.array[2] - theta), .5)
-                    val distanceOUT = distancePID.update(distance, .5)
+                    val angleOUT = anglePID.update(Angle.normalizeRadian(robotOrientation.array[2] - theta), .05)
+                    val distanceOUT = distancePID.update(distance, .05)
 
                     rightVelocity = distanceOUT - angleOUT
                     leftVelocity = distanceOUT + angleOUT
